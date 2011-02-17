@@ -1,0 +1,37 @@
+/**
+ * 
+ */
+
+describe("Model Core Tests", function() { 
+	var model = HBS.Doc.Model;
+	
+	beforeEach(function(){ 
+		
+	});
+	
+	it("should have a model namespace", function() {
+		expect(HBS.Doc.Model).toBeDefined();
+	});
+	
+	it("should have a documents object", function() { 
+		expect(HBS.Doc.Model.Document).toBeDefined();
+	});
+	
+	it("should be able to create a document", function(){
+		var doc = new model.Document();
+		
+		expect(doc.toString()).toEqual("[object Object]")
+	});
+	
+	it("should be able to create a NEW document"), function() { 
+		var doc = new model.Document();
+		expect(doc.getText()).toEqual("");
+	});
+
+	it("should create a document from a string", function(){
+		var doc = new model.Document("welcome");
+		expect(doc.getText()).toEqual("welcome");
+	});
+	
+	
+})

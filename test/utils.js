@@ -26,9 +26,10 @@ describe("basic functionality", function() {
 		HBS.namespace("Documents");
 		expect(HBS.Documents).toBeDefined();
 		
-		HBS.namespace("Documents.Model");
+		var ns = HBS.namespace("Documents.Model");
 		expect(HBS.Documents.Model).toBeDefined();
 		expect(HBS["Documents.Model"]).toEqual(undefined);
+		expect(ns).toBe(HBS.Documents.Model);
 	});
 	
 	it("removes redundant root namespace", function() { 
@@ -36,6 +37,14 @@ describe("basic functionality", function() {
 		
 		expect(HBS.Documents.Model).toBeDefined();
 		expect(HBS.HBS).toEqual(undefined);
+	});
+	
+	it("does not overwrite a namespace", function() { 
+		var model = HBS.namespace("HBS.Documents.Model");
+		model.ToTest = "should be present";
+		
+		var check = HBS.namespace("Documents.Model");
+		expect(check.ToTest).toBeDefined();
 	});
 	
 } );
