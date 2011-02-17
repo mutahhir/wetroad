@@ -2,9 +2,9 @@
  * 
  */
 
-(function(){
-	var model = HBS.namespace("Doc.Model");
+HBS.namespace("Doc.Model");
 
+(function(model){
 	/**
 	 * HBS.Doc.Model.Document object constructor
 	 * 
@@ -16,26 +16,29 @@
 		if( arguments.length == 1 ) {
 			_text = arguments[0];
 		}
-		this.getText() { return _text; }
-		this.setText(/*string*/txt){ 
+		this.getText = function() { 
+			return _text; 
+		};
+		
+		this.setText = function(/*string*/txt){ 
 			if( txt !== _text ) { 
 				_text = txt;
 			}
-		}
+		};
 		
 	};
 	
-	(function(self){
-		
-		
-		
-	})(model.Document.prototype);
+//	(function(self){
+//		
+//		
+//		
+//	})(model.Document.prototype);
 	
 	
 	
 	
 	
-})();
+})(HBS.Doc.Model);
 
 
 

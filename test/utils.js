@@ -47,4 +47,11 @@ describe("basic functionality", function() {
 		expect(check.ToTest).toBeDefined();
 	});
 	
+	it("creates nested namespaces", function(){
+		var mdl = HBS.namespace("HBS.Documents.Model");
+		expect(HBS).toBeDefined();
+		expect(HBS.Documents).toBeDefined();
+		expect(HBS["Documents"]["Model"]).toBeDefined();
+	});
+	
 } );
