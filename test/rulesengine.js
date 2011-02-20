@@ -12,23 +12,25 @@ describe("Rules Engine", function() {
 		expect(HBS.Doc.Model.NodeTemplate).toBeDefined();
 	});
 	
-	it("should contain a node name", function() { 
-		var en = new HBS.Doc.Model.NodeTemplate();
-		expect(en.Name).toBeDefined();
-	});
-	
 	it("should set node name with the constructor", function(){
 		var en = new HBS.Doc.Model.NodeTemplate("line");
-		expect(en.Name).toEqual("line");
+		expect(en.getName()).toEqual("line");
 	});
 	
-	it("should have a children container", function(){
-		var en = new HBS.Doc.Model.NodeTemplate();
-		expect(en.AllowedDescendants).toBeDefined();
-		expect(HBS.isArray(en.AllowedDescendants)).toEqual(true);
+	it("should accept child nodes", function() {
+		var en = new HBS.Doc.Model.NodeTemplate("document");
+		expect(en.allowsDescendant).toBeDefined();
+		expect(en.canParent).toBeDefined();
+		en.allowDescendant("line");
+		expect(en.canParent("line")).toBeTruthy();
 	});
 	
 	
+	describe("Node Template Registration", function() { 
+		it("should have a node registrar", function() { 
+			expect(HBS.Doc.Model.NodeRegistrar).toBeDefined();
+		});
+	});
 	
 	
 	
