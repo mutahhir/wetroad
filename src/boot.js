@@ -30,10 +30,20 @@ var HBS = HBS || {};
 		return parent;
 	}
 	
+	/**
+	 * A simple hack to test whether the object is an array
+	 * 
+	 * @param obj {Object} to be tested if its an array or not
+	 * @returns true if obj refers to an array, false otherwise
+	 */
+	function isArray(/*Array?*/obj) { 
+		return Object.prototype.toString.call(obj) === "[object Array]";
+	}
 	
 	
 	
 	
 	root.namespace = namespace;
+	root.isArray = Array.isArray || isArray;
 	
 })(HBS);

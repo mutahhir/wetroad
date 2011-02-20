@@ -54,4 +54,23 @@ describe("basic functionality", function() {
 		expect(HBS["Documents"]["Model"]).toBeDefined();
 	});
 	
+	describe("isArray", function() { 
+	
+		it("should be able to check for Array types", function(){
+			expect(HBS.isArray).toBeDefined();
+		});
+		
+		it("should correctly identify arrays", function(){
+			var arr = [];
+			expect(HBS.isArray(arr)).toEqual(true);
+		});
+		
+		it("should return false when object is not array", function() { 
+			var arr = "not an array";
+			expect(HBS.isArray(arr)).toEqual(false);
+			expect(HBS.isArray(arguments)).toEqual(false);
+		});
+		
+	});
+	
 } );

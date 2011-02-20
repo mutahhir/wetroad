@@ -34,9 +34,4 @@ describe("Model Core Tests", function() {
 		var doc = new model.Document("welcome");
 		expect(doc.getText()).toEqual("welcome");
 	});
-	
-	it("should have a lines array",function(){
-		var doc = new model.Document("Welcome\nPeople");
-		expect(doc.Lines).toBeDefined();
-	});
 });
