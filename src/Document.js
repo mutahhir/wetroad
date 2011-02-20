@@ -32,7 +32,7 @@ HBS.namespace("Doc.Model");
 //		
 //		
 //		
-//	})(model.Document.prototype);
+//	}).call(model.Document.prototype);
 	
 	
 	

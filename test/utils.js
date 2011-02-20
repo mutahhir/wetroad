@@ -54,7 +54,7 @@ describe("basic functionality", function() {
 		expect(HBS["Documents"]["Model"]).toBeDefined();
 	});
 	
-	describe("isArray", function() { 
+	describe("Array Extensions", function() { 
 	
 		it("should be able to check for Array types", function(){
 			expect(HBS.isArray).toBeDefined();
@@ -71,6 +71,11 @@ describe("basic functionality", function() {
 			expect(HBS.isArray(arguments)).toEqual(false);
 		});
 		
+		it("should run indexOf on an array", function(){
+			var a = [1,2,3,4,5];
+			expect(a.indexOf(4)).toEqual(3);
+		});
 	});
+	
 	
 } );
