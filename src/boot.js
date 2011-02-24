@@ -5,7 +5,7 @@
 var __ROOT_NAMESPACE__ = "HBS";
 var HBS = HBS || {};
 
-(function(root) {
+(function (root) {
 	
 	/**
 	 * Borrowed heavily from: 
@@ -13,7 +13,7 @@ var HBS = HBS || {};
 	 */
 	function namespace(/*string*/name) {
 		var parts = name.split("."),
-			parent=root;
+			parent = root;
 		
 		if(parts[0] === __ROOT_NAMESPACE__) {
 			parts = parts.slice(1);

@@ -1,37 +1,39 @@
-/**
+/*
  * 
- */
 
-describe("Rules Engine", function() { 
+
+describe("Rules Engine", function () { 
 	
-	afterEach(function(){
-		HBS.Doc.Model.NodeTemplate.clearAllCreatedTemplateNames();
-	})
+	afterEach(function () {
+		if( HBS.Doc.Model.NodeTemplate.clearTemplateNames )
+			HBS.Doc.Model.NodeTemplate.clearTemplateNames();
+	});
 	
-	it("should have the engine installed", function() { 
+	it("should have the engine installed", function () { 
 		expect(HBS.Doc.Model).toBeDefined();
 	});
 	
-	it("should contain a node template", function() { 
+	it("should contain a node template", function () { 
 		expect(HBS.Doc.Model.NodeTemplate).toBeDefined();
 	});
 	
-	it("should set node name with the constructor", function(){
+	it("should set node name with the constructor", function () {
 		var en = new HBS.Doc.Model.NodeTemplate("line");
 		expect(en.getName()).toEqual("line");
 	});
 	
-	it("should accept child nodes", function() {
+	it("should accept child nodes", function () {
 		var en = new HBS.Doc.Model.NodeTemplate("document");
-		en.allowDescendant("line");
+		en.allowDescendant(new HBS.Doc.Model.NodeTemplate("line"));
 		expect(en.canParent("line")).toBeTruthy();
 		expect(en.canParent("Line")).toBeFalsy();
-		delete en;
 	});
 	
 	it("should not allow two node templates with the same names",function(){
 		var en = new HBS.Doc.Model.NodeTemplate("document");
-		expect(function(){new HBS.Doc.Model.NodeTemplate("document");}).toThrow("a template with the same name already exists");
+		expect(function () {
+			var a = new HBS.Doc.Model.NodeTemplate("document");
+		} ).toThrow(HBS.Doc.Model.NodeTemplate.ExistingNameError);
 	});
 	
 	it("should allow to change the name", function(){
@@ -40,10 +42,10 @@ describe("Rules Engine", function() {
 		expect(en.getName()).toEqual("a1");
 	});
 	
-	it("should not allow a node name to be changes to an already existing one", function(){
+	it("should not allow a node name to be changed to an already existing one", function(){
 		var en = new HBS.Doc.Model.NodeTemplate("document");
 		var tw = new HBS.Doc.Model.NodeTemplate();
-		expect(function(){tw.setName("document");}).toThrow("cannot set name to an already existing template name");
+		expect(function(){tw.setName("document");}).toThrow(HBS.Doc.Model.NodeTemplate.ExistingNameError);
 	});
 	
 	it("createdTemplates should not contain the changed name of a template", function(){
@@ -52,7 +54,18 @@ describe("Rules Engine", function() {
 		expect(HBS.Doc.Model.NodeTemplate.getCreatedTemplateNames().indexOf("a2")).toEqual(-1);
 	});
 	
+	it("should not accept multiple node templates of the same type as descendants", function(){
+		var en = new HBS.Doc.Model.NodeTemplate("a4");
+		var ch1 = new HBS.Doc.Model.NodeTemplate("b4");
+		var ret1 = en.allowDescendant(ch1);
+		var ret2 = en.allowDescendant(ch1);
+		
+		expect(ret1).toBeTruthy();
+		expect(ret2).toBeFalsy();
+	});
 	
+	
+
 	describe("Node Registrar", function() {
 		var registrar;
 		var model = HBS.Doc.Model;
@@ -86,4 +99,4 @@ describe("Rules Engine", function() {
 	
 	
 	
-});
+}); */
