@@ -30,15 +30,15 @@ function Squirrel(rootName) {
 
 Squirrel.prototype = {
 		under: function under(str) {
-			if(this.rules[str]) return this.rules[str];
+			if(this.nodeTemplates.hasOwnProperty(str)) return this.nodeTemplates[str];
 			var nd = new SquirrelNode(str,this);
-			rules[str] = nd;
+			this.nodeTemplates[str] = nd;
 			return nd;
 		},
 		
 		initialize: function initialize() {
 			this.document = document.implementation.createDocument(null,this.rootName);
-			this.currentNode = document.firstChild;
+			this.currentNode = this.document.firstChild;
 			this.currentRule = this.under(this.rootName);
 		},
 		
@@ -51,11 +51,24 @@ Squirrel.prototype = {
 			//TODO: Calculate the text content of the node, and add that 
 			//to offsets
 			this.currentNode.appendChild(node);
+		},
+		
+		positionAtDocumentStart: function positionAtDocumentStart(){
+			this.currentNode = this.document.firstChild;
+			this.innerOffset = 0;
+			this.offset = 0;
+		},
+		
+		handle: function handle(str) {
+			var res = this.currentRule.handleInput(str);
+			if( res == null ) {
+				// 
+			}
 		}
 };
 
 function SquirrelNode(name, par) {
-	this.parent = p;
+	this.parent = par;
 	this.name = name;
 	this.rules = [];
 }
@@ -75,6 +88,26 @@ SquirrelNode.prototype = {
 				node.appendChild(txt);
 			}
 			this.parent.appendToCurrent(node);
+		}, 
+		
+		/**
+		 * 
+		 * @param str
+		 * @returns {String} return null if no match, matched string otherwise
+		 */
+		handleInput: function handleInput(str) {
+			var rl = this.rules;
+			if( rl.length == 0 ) return null;
+			
+			for(var i=0; i < this.rules.length; i++ ){
+				if( rl[i].match.test(str) ) {
+					// rule matches
+					var str = rl[i].match.exec(str); 
+					rl[i].onMatch(str);
+					return str;
+				}
+			}
+			return null;
 		}
 };
 
@@ -88,6 +121,9 @@ SquirrelRule.prototype = {
 		as: function(str /*,bool */){
 			var returnOnCreate = arguments.length > 1? arguments[1] : false;
 			
+			// register with main squirrel
+			this.parentNode.parent.under(str);
+			
 			this.onMatch = function(matchStr) {
 				if( returnOnCreate ) {
 					this.parentNode.appendToSelf(str, matchStr);
@@ -97,30 +133,3 @@ SquirrelRule.prototype = {
 			};
 		}
 };
-
-
-var sqrl = new Squirrel("document"); 
-/*
- * Creates XML Document
- * <document></document>
- */
-
-sqrl.onEachNewLine("line");
-/*
- * Text input: "welcome\n"
- * 
- * XML Document: <document><line></line></document>
- * Current Node: <line></line> 
- * Current offset: 0
- */
-
-sqrl.under("line").accept(/.*/).as("content");
-/* 
- * Text Input: welcome\n
- * XD: <document><line>welcome</line></document> 
- * By default, we'll not allow line-endings and beginnings to 
- * be passed on to the regex engine
- */
-
-sqrl.under("line").acceptEach(/\t/).atLineBeginning().as("tab")
-
