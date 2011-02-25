@@ -148,6 +148,16 @@ describe("squirrel syntax creation", function(){
 		expect(sqrl.document.getElementsByTagName("line").length).toEqual(4);
 	});
 	
-	
+	it("can create a default child and hand over control to it", function(){
+		sqrl.under("doc").createDefaultChild("line");
+		sqrl.appendBuffer("welcome");
+		while(sqrl.buffer.length > 0 ){
+			sqrl.nibble();
+		}
+		console.log(sqrl.document);
+		expect(sqrl.document.firstChild.childNodes.length).toEqual(1);
+		expect(sqrl.document.firstChild.firstChild.nodeName).toEqual("line");
+		expect(sqrl.document.firstChild.firstChild.firstChild.data).toEqual("welcome");
+	});
 	
 });

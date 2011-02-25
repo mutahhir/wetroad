@@ -11,8 +11,9 @@
  * 
  */
 
-/**------------------------------------------------------------------------
- * A Match description is returned whenever a SquirrelRule is asked to match a
+/**
+ * ------------------------------------------------------------------------ A
+ * Match description is returned whenever a SquirrelRule is asked to match a
  * string.
  * 
  * @param does
@@ -50,7 +51,8 @@ MatchDescription.firstMatch = function firstMatch(arr) {
 	return min;
 };
 
-/**--------------------------------------------------------------------------
+/**
+ * --------------------------------------------------------------------------
  * Squirrel Rule is the basic unit that describes the rules that match text and
  * convert them into events.
  * 
@@ -125,9 +127,10 @@ SquirrelRule.prototype = {
 	}
 };
 
-/**---------------------------------------------------------------------------
- * A SquirrelNode is a template that defines the behaviour and characteristics
- * for the same named XML nodes.
+/**
+ * --------------------------------------------------------------------------- A
+ * SquirrelNode is a template that defines the behaviour and characteristics for
+ * the same named XML nodes.
  * 
  * @param name
  *            {string} Represents the XML elements that will be created and
@@ -140,6 +143,7 @@ function SquirrelNode(name, par) {
 	this.parent = par;
 	this.name = name;
 	this.rules = [];
+	this.defaultChild = null;
 }
 
 SquirrelNode.prototype = {
@@ -154,7 +158,11 @@ SquirrelNode.prototype = {
 	},
 
 	appendToSelf : function appendToSelf(str, match, keepText) {
-		var doc = this.parent.document, node = doc.createElement(str), txt = null;
+		var doc = this.parent.document, node = doc.createElement(str),
+			txt = null;
+		
+		node = this.handleDefaultChild(str, node);
+		
 		if (match && match.length > 0 && keepText) {
 			txt = doc.createTextNode(match);
 			node.appendChild(txt);
@@ -162,10 +170,59 @@ SquirrelNode.prototype = {
 		this.parent.appendToCurrent(node);
 	},
 	
+	handleDefaultChild: function handleDefaultChild(str, node){
+		var doc = this.parent.document, other = null, defNode = null;
+		
+		if(this.defaultChild != null ){
+			other = this.parent.under(str);
+			defNode = doc.createElement(other.defaultChild);
+			node.appendChild(defNode);
+			node = defNode;
+		}
+		return node;
+	},
+	
+	createDefaultChild: function createDefaultChild(name){
+		if( this.parent.rootName === this.name ) {
+			/*
+			 * HACK! Since the document root element is created the instant we
+			 * initialize squirrel, we need to test if the default child exists
+			 * for document root
+			 */
+			var doc = this.parent.document,
+				root = doc.firstChild,
+				newChild=null, i,len;
+			
+			newChild = doc.createElement(name);
+			if( root.firstChild !== null ){ 
+				if( root.firstChild.nodeName === name ) {
+					delete newChild;
+					return;
+				}
+				len = root.childNodes.length;
+				if( len > 0) {
+					for(i=0; i<len; i++){
+						newChild.appendNode(root.firstChild);
+					}
+				}
+			}
+			root.appendChild(newChild);
+			if( this.parent.currentNode === root ){
+				this.parent.moveOnTo(newChild);
+			}
+		}
+		
+		this.parent.under(name);	// register with parent, incase this is the
+									// only instance
+		this.defaultChild = name;
+	},
+	
 	handOverTo: function handOverTo(str, match, keepText){
 		var doc = this.parent.document,
 		    node = doc.createElement(str),
 		    txt = null;
+		
+		node = this.handleDefaultChild(str,node);
 		
 		if( match && match.length > 0 && keepText ) {
 			txt = doc.createTextNode(match);
@@ -215,7 +272,8 @@ SquirrelNode.prototype = {
 	}
 };
 
-/**-------------------------------------------------------------------
+/**
+ * -------------------------------------------------------------------
  * 
  * @param rootName
  * @returns {Squirrel}
@@ -240,7 +298,8 @@ function Squirrel(rootName) {
 
 	this.initialize();
 	
-	// From Wikipedia and http://blog.stevenlevithan.com/archives/javascript-regex-and-unicode
+	// From Wikipedia and
+	// http://blog.stevenlevithan.com/archives/javascript-regex-and-unicode
 	Squirrel.EOL_REGEX = /\u000d\u000a|\u000d|\u000a|\u2028|\u2029|\u000c|\u0085/;
 }
 
@@ -280,13 +339,13 @@ Squirrel.prototype = {
 	
 	moveOnTo: function moveOnTo(node) {
 		var name= node.nodeName;
-		this.pushState();
+		this.pushCurrentState();
 		this.currentNode.appendChild(node);
 		this.currentNode = node;
 		this.currentTemplate = this.under(name);
 	},
 	
-	pushState: function pushState() {
+	pushCurrentState: function pushCurrentState() {
 		this.templateStack.push([this.currentTemplate, this.currentNode]);
 	},
 	
@@ -308,6 +367,8 @@ Squirrel.prototype = {
 	nibble : function nibble() {
 		var fm = this.currentTemplate.firstMatch(this.buffer), txt = null, bufferConsumeCount = 0;
 
+		
+		
 		if (fm === null) {
 			this.noRulesMatched(this.buffer);
 			bufferConsumeCount = this.buffer.length;
