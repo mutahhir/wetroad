@@ -1,6 +1,7 @@
 describe("squirrel syntax creation", function(){
 	var sqrl;
-	beforeEach(function(){
+	
+	beforeEach(function () {
 		sqrl = new Squirrel("doc");
 	});
 	
@@ -34,32 +35,90 @@ describe("squirrel syntax creation", function(){
 	});
 	
 	it("should be able to handle input", function(){
-		sqrl.handle("\t");
+		sqrl.appendBuffer("\t");
+		sqrl.nibble();
 		expect(sqrl.currentNode).toEqual(sqrl.document.firstChild);
 	});
 	
 	it("should be able to consume text when no rules match", function(){
 		sqrl.under("doc").accept(/\t/).as("tab", true);
 		var wel = "welcome";
-		sqrl.handle(wel);
+		sqrl.appendBuffer(wel);
+		sqrl.nibble();
 		expect(sqrl.document.firstChild.firstChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
 		expect(sqrl.document.firstChild.firstChild.length).toEqual(wel.length);
+		expect(sqrl.buffer.length).toEqual(0);
 	});
 	
 	it("should append to text when no rules match and text is already present", function(){
 		sqrl.under("doc").accept(/\t/).as("tab", true);
 		var wel = "Welcome", come=" Home";
-		sqrl.handle(wel);
-		sqrl.handle(come);
+		sqrl.appendBuffer(wel);
+		sqrl.nibble();
+		sqrl.appendBuffer(come);
+		sqrl.nibble();
 		expect(sqrl.document.firstChild.childNodes.length).toEqual(1);
 	});
 	
 	it("should match text until first rule matches", function(){
 		sqrl.under("doc").accept(/wor/).as("World", true);
-		sqrl.handle("hello world");
+		sqrl.appendBuffer("hello world");
+		sqrl.nibble();
 		var fc = sqrl.document.firstChild;
 		expect(fc.firstChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
 		expect(fc.firstChild.data).toEqual("hello ");
+	});
+	
+	it("should be able to create nodes amongst text", function(){
+		sqrl.under("doc").accept(/wor/).as("world", true);
+		sqrl.appendBuffer("hello world");
+		sqrl.nibble();
+		var fc = sqrl.document.firstChild;
+		expect(fc.firstChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
+		sqrl.nibble();
+		expect(fc.childNodes.length).toEqual(2);
+		expect(fc.childNodes[1].nodeName).toEqual("world");
+		sqrl.nibble();
+		expect(fc.lastChild.data).toEqual("ld");
+		console.log(sqrl.document);
+		expect(sqrl.buffer.length).toEqual(0);
+	});
+	
+	it("should not keep text when told not to", function(){
+		sqrl.under("doc").accept(/wor/).as("world", true, false);
+		sqrl.appendBuffer("hello world");
+		while(sqrl.buffer.length > 0 ) {
+			sqrl.nibble();
+		}
+		expect(sqrl.document.getElementsByTagName("world")[0].childNodes.length).toEqual(0);
+	});
+	
+	it("should automatically keep text", function(){
+		sqrl.under("doc").accept(/wor/).as("world", true);
+		sqrl.appendBuffer("hello world");
+		while(sqrl.buffer.length > 0 ){
+			sqrl.nibble();
+		}
+		var ex =sqrl.document.getElementsByTagName("world")[0]; 
+		expect(ex.childNodes.length).toEqual(1);
+		expect(ex.firstChild.data).toEqual("wor");
+	});
+	
+	it("should automatically hand over currentTemplate", function(){
+		sqrl.under("doc").accept(/-/).as("todo",false,false);
+		sqrl.under("todo").accept(/:/).asEndMarker();
+		sqrl.under("doc").accept(/:/).as("project",false,false);
+		sqrl.appendBuffer("-bionic:people");
+		while(sqrl.buffer.length > 0) {
+			sqrl.nibble();
+			console.warn(sqrl.document);
+		}
+		var fc = sqrl.document.firstChild;
+		expect(fc.childNodes.length).toEqual(2);
+		expect(fc.firstChild.nodeName).toEqual("todo");
+		expect(fc.lastChild.nodeName).toEqual("project");
+		expect(fc.firstChild.firstChild.data).toEqual("bionic");
+		expect(fc.lastChild.firstChild.data).toEqual("people");
 	});
 	
 });

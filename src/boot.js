@@ -51,9 +51,10 @@ var HBS = HBS || {};
 	function indexOf(searchElement /*, fromIndex */) {
 		"use strict";
 		
-		if( this == void 0 || this == null )
+		if( this == void(0) || this == null )
 			throw new TypeError();
 		
+		var t = Object(this);
 		var len = t.length >>> 0;
 		if( len === 0 )
 			return -1;
