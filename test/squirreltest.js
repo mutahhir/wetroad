@@ -80,7 +80,6 @@ describe("squirrel syntax creation", function(){
 		expect(fc.childNodes[1].nodeName).toEqual("world");
 		sqrl.nibble();
 		expect(fc.lastChild.data).toEqual("ld");
-		console.log(sqrl.document);
 		expect(sqrl.buffer.length).toEqual(0);
 	});
 	
@@ -108,17 +107,47 @@ describe("squirrel syntax creation", function(){
 		sqrl.under("doc").accept(/-/).as("todo",false,false);
 		sqrl.under("todo").accept(/:/).asEndMarker();
 		sqrl.under("doc").accept(/:/).as("project",false,false);
-		sqrl.appendBuffer("-bionic:people");
+		sqrl.appendBuffer("-tasky:projecty");
 		while(sqrl.buffer.length > 0) {
 			sqrl.nibble();
-			console.warn(sqrl.document);
 		}
 		var fc = sqrl.document.firstChild;
 		expect(fc.childNodes.length).toEqual(2);
 		expect(fc.firstChild.nodeName).toEqual("todo");
 		expect(fc.lastChild.nodeName).toEqual("project");
-		expect(fc.firstChild.firstChild.data).toEqual("bionic");
-		expect(fc.lastChild.firstChild.data).toEqual("people");
+		expect(fc.firstChild.firstChild.data).toEqual("tasky");
+		expect(fc.lastChild.firstChild.data).toEqual("projecty");
 	});
+	
+	describe("Eol Regex", function(){
+		it("should recognize Windows EOL", function(){
+			expect(Squirrel.EOL_REGEX.test("welcome\r\n")).toBeTruthy();
+		});
+		
+		it("should recognize Unix EOL",function(){
+			expect(Squirrel.EOL_REGEX.test("welcome\n")).toBeTruthy();
+		});
+		
+		it("should recognize Mac EOL", function(){
+			expect(Squirrel.EOL_REGEX.test("welcome\r")).toBeTruthy();
+		});
+		
+		it("should recognize Unicode standard EOLs", function(){
+			expect(Squirrel.EOL_REGEX.test("welcome\f")).toBeTruthy();
+			expect(Squirrel.EOL_REGEX.test("welcome\u2028")).toBeTruthy();
+			expect(Squirrel.EOL_REGEX.test("welcome\u2029")).toBeTruthy();
+			expect(Squirrel.EOL_REGEX.test("welcome\u0085")).toBeTruthy();
+		});
+	});
+	
+	it("should receive endofline events", function(){
+		sqrl.under("doc").acceptLineEnd().as("line",true,false);
+		sqrl.appendBuffer("1\n2\r\n3\r4\f");
+		while(sqrl.buffer.length > 0)
+			sqrl.nibble();
+		expect(sqrl.document.getElementsByTagName("line").length).toEqual(4);
+	});
+	
+	
 	
 });

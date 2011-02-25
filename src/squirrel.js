@@ -148,6 +148,10 @@ SquirrelNode.prototype = {
 		this.rules.push(rl);
 		return rl;
 	},
+	
+	acceptLineEnd: function acceptLineEnd() {
+		return this.accept(Squirrel.EOL_REGEX);		
+	},
 
 	appendToSelf : function appendToSelf(str, match, keepText) {
 		var doc = this.parent.document, node = doc.createElement(str), txt = null;
@@ -235,6 +239,9 @@ function Squirrel(rootName) {
 	this.onTextEntry = null; // event for text insertion
 
 	this.initialize();
+	
+	// From Wikipedia and http://blog.stevenlevithan.com/archives/javascript-regex-and-unicode
+	Squirrel.EOL_REGEX = /\u000d\u000a|\u000d|\u000a|\u2028|\u2029|\u000c|\u0085/;
 }
 
 Squirrel.prototype = {
@@ -291,7 +298,7 @@ Squirrel.prototype = {
 		this.currentNode = popped[1];
 		
 	},
-
+	
 	positionAtDocumentStart : function positionAtDocumentStart() {
 		this.currentNode = this.document.firstChild;
 		this.innerOffset = 0;
