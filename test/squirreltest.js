@@ -38,19 +38,28 @@ describe("squirrel syntax creation", function(){
 		expect(sqrl.currentNode).toEqual(sqrl.document.firstChild);
 	});
 	
-	it("shoudl be able to handle input and create nodes", function(){
-		sqrl.under("doc").accept(/\t/).as("tab",true);
-		sqrl.handle("\t");
-		expect(sqrl.currentNode.nodeName).toEqual("doc");
-		expect(sqrl.currentNode.childNodes.length).toEqual(1);
-		expect(sqrl.currentNode.lastChild.nodeName).toEqual("tab");
+	it("should be able to consume text when no rules match", function(){
+		sqrl.under("doc").accept(/\t/).as("tab", true);
+		var wel = "welcome";
+		sqrl.handle(wel);
+		expect(sqrl.document.firstChild.firstChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
+		expect(sqrl.document.firstChild.firstChild.length).toEqual(wel.length);
 	});
 	
-	it("should convert to text whatever doesn't match", function(){
-		sqrl.under("doc").accept(/\t/).as("tab",true);
-		sqrl.handle("not good");
-		expect(sqrl.currentNode.childNodes.length).toEqual(1);
-		expect(sqrl.currentNode.childNodes.nodeType).toEqual("#Text");
+	it("should append to text when no rules match and text is already present", function(){
+		sqrl.under("doc").accept(/\t/).as("tab", true);
+		var wel = "Welcome", come=" Home";
+		sqrl.handle(wel);
+		sqrl.handle(come);
+		expect(sqrl.document.firstChild.childNodes.length).toEqual(1);
+	});
+	
+	it("should match text until first rule matches", function(){
+		sqrl.under("doc").accept(/wor/).as("World", true);
+		sqrl.handle("hello world");
+		var fc = sqrl.document.firstChild;
+		expect(fc.firstChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
+		expect(fc.firstChild.data).toEqual("hello ");
 	});
 	
 });
