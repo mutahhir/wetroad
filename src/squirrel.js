@@ -110,7 +110,7 @@ SquirrelRule.prototype = {
 		};
 	},
 	
-	toBecome: function toBecome(str /*, bool */){
+	toBecome: function toBecome(str /* , bool */){
 		var keepText = arguments.length > 1 ? arguments[1] : true;
 
 		// register with main squirrel
@@ -159,7 +159,7 @@ function SquirrelNode(name, par) {
 	this.parent = par;
 	this.name = name;
 	this.rules = [];
-	this.defaultChild = null;
+	this.defaultChildName = null;
 }
 
 SquirrelNode.prototype = {
@@ -175,9 +175,9 @@ SquirrelNode.prototype = {
 
 	appendToSelf : function appendToSelf(str, match, keepText) {
 		var doc = this.parent.document, node = doc.createElement(str),
-			txt = null;
+			txt = null, descendant = null;
 		
-		node = this.handleDefaultChild(str, node);
+		descendant = this.getDefaultChild(str, node, true);
 		
 		if (match && match.length > 0 && keepText) {
 			txt = doc.createTextNode(match);
@@ -186,47 +186,88 @@ SquirrelNode.prototype = {
 		this.parent.appendToCurrent(node);
 	},
 	
-	handleDefaultChild: function handleDefaultChild(str, node){
-		var doc = this.parent.document, other = null, defNode = null;
+	getDefaultChild: function getDefaultChild(ownerName, node, addToNode){
+		var sqrl = this.parent,
+			doc = sqrl.document, child = null,
+			templ = sqrl.under(ownerName),
+			defChild = templ.defaultChildName;
 		
-		if(this.defaultChild != null ){
-			other = this.parent.under(str);
-			defNode = doc.createElement(other.defaultChild);
-			node.appendChild(defNode);
-			node = defNode;
+		if(defChild !== null ){
+			child = doc.createElement(defChild);
+			if( addToNode )
+				node.appendChild(child);
+			return this.getDefaultChild(defChild, child, true);
 		}
+		
 		return node;
 	},
 	
-	createDefaultChild: function createDefaultChild(name){
-		if( this.parent.rootName === this.name ) {
-			/*
-			 * HACK! Since the document root element is created the instant we
-			 * initialize squirrel, we need to test if the default child exists
-			 * for document root
-			 */
-			var doc = this.parent.document,
-				root = doc.firstChild,
-				newChild=null, i,len;
+	synchronizeDefaultChildrenFor: function synchronizeDefaultChildrenFor(name){
+		var sqrl = this.parent,
+		    doc = sqrl.document,
+		    templ = sqrl.under(name), 
+		    i = 0,
+		    currNode = sqrl.currentNode;
+		
+		if( templ.defaultChildName === null ) return;
+		
+		var instances = doc.getElementsByTagName(name),
+			len = instances.length;
+		
+		if( len == 0 ) return;
+		
+		for( ; i < len; i++ ){
+			// check if default node is present
+			var node = instances[i];
+			if( node.firstChild !== null && 
+					node.firstChild.nodeName === templ.defaultChildName )
+				continue; // condition already satisfied
 			
-			newChild = doc.createElement(name);
-			if( root.firstChild !== null ){ 
-				if( root.firstChild.nodeName === name ) {
-					delete newChild;
-					return;
-				}
-				
-				Utils.moveChildrenTo(newChild, root);
-			}
-			root.appendChild(newChild);
-			if( this.parent.currentNode === root ){
-				this.parent.moveOnTo(newChild);
+			var lowest = this.getDefaultChild(name, node, false);
+			var highest = Utils.highestAncestor(lowest);
+			
+			if( node.hasChildNodes() )
+				Utils.moveChildrenTo(lowest, node);
+			
+			node.appendChild(highest);
+			
+			if( currNode === node ){
+				// modify the rules
+				sqrl.setCurrent(lowest);
 			}
 		}
 		
-		this.parent.under(name);	// register with parent, incase this is the
-									// only instance
-		this.defaultChild = name;
+	},
+	
+	createDefaultChild: function createDefaultChild(name){
+		var sqrl = this.parent;
+		
+		sqrl.under(name);	// register with parent, incase this is the
+		// only instance
+		this.defaultChildName = name;
+		
+		this.synchronizeDefaultChildrenFor(this.name);
+	},
+	
+	removeDefaultChildren: function removeDefaultChildren(node){
+		if( !Utils.isNode(node) ) return;
+		
+		var templ = this.parent.under(node.nodeName);
+		var n = node, p = null;
+		var depth = 0;
+		
+		while( templ.defaultChildName !== null && n.firstChild.nodeName === templ.defaultChildName ) {
+				n = n.firstChild;
+				templ = this.parent.under(n.nodeName);
+				depth += 1;
+		}
+		
+		if( n === node ) return;
+		
+		// now n holds the last default child in the chain
+		var def = node.firstChild;
+		Utils.moveChildrenTo(node, n);
+		node.removeChild(def);		
 	},
 	
 	handOverTo: function handOverTo(str, match, keepText){
@@ -234,7 +275,7 @@ SquirrelNode.prototype = {
 		    node = doc.createElement(str),
 		    txt = null;
 		
-		node = this.handleDefaultChild(str,node);
+		node = this.getDefaultChild(str,node,true);
 		
 		if( match && match.length > 0 && keepText ) {
 			txt = doc.createTextNode(match);
@@ -246,16 +287,21 @@ SquirrelNode.prototype = {
 	},
 	
 	become: function become(str, match, keepText) {
-		var doc = this.parent.document,
+		var sqrl = this.parent,
+			doc = sqrl.document,
 		    node = doc.createElement(str),
 		    txt = null,
-		    curr = this.parent.currentNode,	// should be us
-		    par = curr.parentNode;
+		    curr = sqrl.currentNode,	// should be us
+		    par = curr.parentNode,
+		    newTempl = sqrl.under(str);
 		
 		if( par === null ) {
 			// we're the topmost root, handle this
 			return;
 		}
+		
+		this.removeDefaultChildren(curr);
+		
 		Utils.moveChildrenTo(node,curr);
 		this.parent.changeCurrentTo(node);
 	},
@@ -364,6 +410,18 @@ Squirrel.prototype = {
 		this.currentNode.appendChild(node);
 	},
 	
+	setCurrent: function setCurrent(node /* , replaceState */){
+		var replaceState = arguments.length > 1? arguments[1] : false;
+		if( replaceState ) { 
+			this.popState(false);
+			this.pushCustomState(node, this.under(node.nodeName));
+		} else {
+			this.pushCurrentState();
+		}
+		this.currentNode = node;
+		this.currentTemplate = this.under(node.nodeName);
+	},
+	
 	moveOnTo: function moveOnTo(node) {
 		var name= node.nodeName;
 		this.pushCurrentState();
@@ -374,28 +432,41 @@ Squirrel.prototype = {
 	
 	changeCurrentTo: function changeCurrentTo(node){
 		var curr = this.currentNode;
+		var templ = this.under(node.nodeName);
 		curr.parentNode.replaceChild(node,curr);
 		this.currentNode = node;
-		this.currentTemplate = this.under(node.nodeName);
+		this.currentTemplate = templ;
+		templ.synchronizeDefaultChildrenFor(node.nodeName);
 	},
 	
 	pushCurrentState: function pushCurrentState() {
 		this.templateStack.push([this.currentTemplate, this.currentNode]);
 	},
 	
-	popState: function popState() {
+	pushCustomState: function pushCustomState(node,rule) {
+		this.templateStack.push([rule, node]);
+	},
+	
+	popState: function popState(/* setState */) {
 		if( this.templateStack.length == 0 ) return;
 		
-		var popped = this.templateStack.pop();
-		this.currentTemplate = popped[0];
-		this.currentNode = popped[1];
+		var setState = arguments.length > 0? arguments[0] : true;
 		
+		var popped = this.templateStack.pop();
+		if( setState ) {
+			this.currentTemplate = popped[0];
+			this.currentNode = popped[1];
+		}
 	},
 	
 	positionAtDocumentStart : function positionAtDocumentStart() {
 		this.currentNode = this.document.firstChild;
 		this.innerOffset = 0;
 		this.offset = 0;
+	},
+	
+	canNibble: function canNibble(){
+		return this.buffer.length > 0;
 	},
 
 	nibble : function nibble() {
@@ -435,5 +506,22 @@ Squirrel.prototype = {
 			}
 		}
 		this.currentNode.appendChild(this.document.createTextNode(str));
+	},
+	
+	ascend: function ascend(/* Number */){
+		var numAscention = arguments.lenth > 0? arguments[0] : 1,
+			currNode = this.currentNode,
+			currentNodeDepth= Utils.getNodeDepth(currNode);
+		
+		if( numAscention > currentNodeDepth ) {
+			return false;
+		}
+		
+		for(var i = 0; i < numAscention; i++ ){
+			currNode = currNode.parentNode;
+		}
+		
+		this.setCurrent(currNode, false);	// we don't want to push state,
+											// we'll replace it
 	}
 };

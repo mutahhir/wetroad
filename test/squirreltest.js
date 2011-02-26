@@ -1,4 +1,4 @@
-describe("squirrel syntax creation", function(){
+describe("squirrel", function(){
 	var sqrl;
 	
 	beforeEach(function () {
@@ -22,7 +22,7 @@ describe("squirrel syntax creation", function(){
 		expect(sqrl.nodeTemplates.doc.rules.length).toEqual(2);
 	});
 	
-	it("should be able to hangle inline nodes", function(){
+	it("should be able to handle inline nodes", function(){
 		sqrl.under("doc").accept(/\t/).as("tab", false);
 		// no test for now, will add one later
 	});
@@ -150,6 +150,7 @@ describe("squirrel syntax creation", function(){
 	
 	it("can create a default child and hand over control to it", function(){
 		sqrl.under("doc").accept(/lc/).as("world", true);
+		sqrl.under("line").createDefaultChild("innerline");
 		sqrl.appendBuffer("welcome");
 		while(sqrl.buffer.length > 0 ){
 			sqrl.nibble();
@@ -157,9 +158,10 @@ describe("squirrel syntax creation", function(){
 		sqrl.under("doc").createDefaultChild("line");
 		expect(sqrl.document.firstChild.childNodes.length).toEqual(1);
 		expect(sqrl.document.firstChild.firstChild.nodeName).toEqual("line");
-		expect(sqrl.document.firstChild.firstChild.firstChild.data).toEqual("we");
-		expect(sqrl.document.firstChild.firstChild.childNodes[1].tagName).toEqual("world");
-		expect(sqrl.document.firstChild.firstChild.childNodes[2].data).toEqual("ome");
+		expect(sqrl.document.firstChild.firstChild.firstChild.nodeName).toEqual("innerline");
+		expect(sqrl.document.firstChild.firstChild.firstChild.childNodes[0].data).toEqual("we");
+		expect(sqrl.document.firstChild.firstChild.firstChild.childNodes[1].tagName).toEqual("world");
+		expect(sqrl.document.firstChild.firstChild.firstChild.childNodes[2].data).toEqual("ome");
 	});
 	
 	it("should accept strings as well as regexes in accept",function() {
@@ -182,14 +184,31 @@ describe("squirrel syntax creation", function(){
 		expect(sqrl.document.firstChild.childNodes.length).toEqual(1);
 		expect(sqrl.document.getElementsByTagName("project")[0].childNodes.length).toEqual(1);
 		expect(sqrl.document.getElementsByTagName("project")[0].childNodes[0].data).toEqual(" important test");
-		console.log(sqrl.document);
+	});
+	
+	it("should allow moving up a node", function(){
+		sqrl.under("note").createDefaultChild("content");
+		sqrl.under("doc").createDefaultChild("note");
+		expect(sqrl.currentNode.nodeName).toEqual("content");
+		expect(sqrl.currentTemplate.name).toEqual("content");
+		sqrl.ascend();
+		expect(sqrl.currentNode.nodeName).toEqual("note");
+		expect(sqrl.currentTemplate.name).toEqual("note");
 	});
 	
 	it("should deal with defaultChildren properly when becoming different tags",function(){
-		
+		sqrl.under("doc").createDefaultChild("note");
+		sqrl.under("note").createDefaultChild("content");
+		sqrl.ascend();
+		sqrl.under("note").accept("-").toBecome("task");
+		sqrl.appendBuffer("- important test");
+		while(sqrl.canNibble())
+			sqrl.nibble();
+		expect(sqrl.document.firstChild.firstChild.nodeName).toEqual("task");
+		expect(sqrl.document.firstChild.firstChild.firstChild.data).toEqual(" important test");
 	});
 	
-	it("should allow even the document root to become something else",function(){
+	it("should work in notepad.js syntax", function(){
 		
 	});
 	
