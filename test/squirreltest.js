@@ -149,15 +149,48 @@ describe("squirrel syntax creation", function(){
 	});
 	
 	it("can create a default child and hand over control to it", function(){
-		sqrl.under("doc").createDefaultChild("line");
+		sqrl.under("doc").accept(/lc/).as("world", true);
 		sqrl.appendBuffer("welcome");
 		while(sqrl.buffer.length > 0 ){
 			sqrl.nibble();
 		}
-		console.log(sqrl.document);
+		sqrl.under("doc").createDefaultChild("line");
 		expect(sqrl.document.firstChild.childNodes.length).toEqual(1);
 		expect(sqrl.document.firstChild.firstChild.nodeName).toEqual("line");
-		expect(sqrl.document.firstChild.firstChild.firstChild.data).toEqual("welcome");
+		expect(sqrl.document.firstChild.firstChild.firstChild.data).toEqual("we");
+		expect(sqrl.document.firstChild.firstChild.childNodes[1].tagName).toEqual("world");
+		expect(sqrl.document.firstChild.firstChild.childNodes[2].data).toEqual("ome");
+	});
+	
+	it("should accept strings as well as regexes in accept",function() {
+		sqrl.under("doc").accept("-").as("temp");
+		sqrl.appendBuffer("- wel");
+		while(sqrl.buffer.length > 0){
+			sqrl.nibble();
+		}
+		expect(sqrl.document.getElementsByTagName("temp").length).toEqual(1);
+	});
+	
+	it("can become a different tag", function(){
+		sqrl.under("doc").createDefaultChild("note");
+		sqrl.under("note").accept("-").toBecome("task");
+		sqrl.under("task").accept(":").toBecome("project");
+		sqrl.appendBuffer("- important test:");
+		while(sqrl.buffer.length > 0 )
+			sqrl.nibble();
+		expect(sqrl.document.firstChild.firstChild.nodeName).toEqual("project");
+		expect(sqrl.document.firstChild.childNodes.length).toEqual(1);
+		expect(sqrl.document.getElementsByTagName("project")[0].childNodes.length).toEqual(1);
+		expect(sqrl.document.getElementsByTagName("project")[0].childNodes[0].data).toEqual(" important test");
+		console.log(sqrl.document);
+	});
+	
+	it("should deal with defaultChildren properly when becoming different tags",function(){
+		
+	});
+	
+	it("should allow even the document root to become something else",function(){
+		
 	});
 	
 });

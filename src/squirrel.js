@@ -66,7 +66,12 @@ MatchDescription.firstMatch = function firstMatch(arr) {
  */
 function SquirrelRule(rgx, node) {
 	this.parentNode = node;
-	this.match = rgx;
+	if(typeof rgx === "string") {
+		this.match = new RegExp(rgx);
+	} else if (rgx instanceof RegExp) {
+		this.match = rgx;
+	} else
+		throw new TypeError("expected a regular expression literal or string as first argument");
 	this.onMatch = null;
 	this.isMarker = false;
 }
@@ -102,6 +107,17 @@ SquirrelRule.prototype = {
 		this.isMarker = true;
 		this.onMatch = function(matchStr) {
 			this.parentNode.endEncountered();
+		};
+	},
+	
+	toBecome: function toBecome(str /*, bool */){
+		var keepText = arguments.length > 1 ? arguments[1] : true;
+
+		// register with main squirrel
+		this.parentNode.parent.under(str);
+		
+		this.onMatch = function(matchStr) {
+			this.parentNode.become(str, matchStr, keepText);
 		};
 	},
 
@@ -199,12 +215,8 @@ SquirrelNode.prototype = {
 					delete newChild;
 					return;
 				}
-				len = root.childNodes.length;
-				if( len > 0) {
-					for(i=0; i<len; i++){
-						newChild.appendNode(root.firstChild);
-					}
-				}
+				
+				Utils.moveChildrenTo(newChild, root);
 			}
 			root.appendChild(newChild);
 			if( this.parent.currentNode === root ){
@@ -231,6 +243,21 @@ SquirrelNode.prototype = {
 		
 		this.parent.moveOnTo(node);
 		
+	},
+	
+	become: function become(str, match, keepText) {
+		var doc = this.parent.document,
+		    node = doc.createElement(str),
+		    txt = null,
+		    curr = this.parent.currentNode,	// should be us
+		    par = curr.parentNode;
+		
+		if( par === null ) {
+			// we're the topmost root, handle this
+			return;
+		}
+		Utils.moveChildrenTo(node,curr);
+		this.parent.changeCurrentTo(node);
 	},
 	
 	endEncountered: function endEncountered(){
@@ -343,6 +370,13 @@ Squirrel.prototype = {
 		this.currentNode.appendChild(node);
 		this.currentNode = node;
 		this.currentTemplate = this.under(name);
+	},
+	
+	changeCurrentTo: function changeCurrentTo(node){
+		var curr = this.currentNode;
+		curr.parentNode.replaceChild(node,curr);
+		this.currentNode = node;
+		this.currentTemplate = this.under(node.nodeName);
 	},
 	
 	pushCurrentState: function pushCurrentState() {
