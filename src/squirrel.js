@@ -160,6 +160,7 @@ function SquirrelNode(name, par) {
 	this.name = name;
 	this.rules = [];
 	this.defaultChildName = null;
+	this.afterEndRule = null;
 }
 
 SquirrelNode.prototype = {
@@ -171,6 +172,14 @@ SquirrelNode.prototype = {
 	
 	acceptLineEnd: function acceptLineEnd() {
 		return this.accept(Squirrel.EOL_REGEX);		
+	},
+	
+	closeParentAfterEnd: function closeParentAfterEnd(){
+		
+	},
+	
+	recreateAfterEnd: function recreateAfterEnd(){
+		
 	},
 
 	appendToSelf : function appendToSelf(str, match, keepText) {
@@ -307,7 +316,9 @@ SquirrelNode.prototype = {
 	},
 	
 	endEncountered: function endEncountered(){
-		this.parent.popState();
+		// this isn't really reliable because of default children
+		// this.parent.popState();
+		this.parent.ascend();
 	},
 
 	/**

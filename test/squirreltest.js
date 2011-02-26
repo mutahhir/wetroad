@@ -209,7 +209,17 @@ describe("squirrel", function(){
 	});
 	
 	it("should work in notepad.js syntax", function(){
-		
+		sqrl.under("doc").createDefaultChild("line");
+		sqrl.under("line").accept(/\t/).as("tab", true, false);
+		sqrl.under("line").accept(/\w/).as("content");
+		sqrl.under("content").acceptLineEnd().asEndMarker();
+		sqrl.under("content").closeParentAfterEnd();
+		sqrl.under("line").recreateAfterEnd();
+		sqrl.appendBuffer("Welcome\n\tOne Tab\n\t\tTwo Tabs\n\t\t\tThree\tTabs");
+		while(sqrl.canNibble()) {
+			console.log(sqrl.document);
+			sqrl.nibble();
+		}
 	});
 	
 });
