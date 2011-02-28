@@ -176,6 +176,7 @@ function SquirrelNode(name, par) {
 	this.sqrl = par;
 	this.name = name;
 	this.rules = [];
+	this.defaultRule = null;
 	this.defaultChildName = null;
 	this.afterEndRule = null;
 }
@@ -192,6 +193,18 @@ SquirrelNode.prototype = {
 		if( arguments.length > 0 )
 			return this.accept(Squirrel.EOL_REGEX, arguments[0]);
 		return this.accept(Squirrel.EOL_REGEX);		
+	},
+	
+	/**
+	 * A very powerful clause that will match anything if all other matches 
+	 * match later than it.
+	 * @returns
+	 */
+	acceptDefault: function acceptDefault(/* andConsume */) {
+		var consumes = arguments.length > 1? arguments[1] : true;
+		var rl = new SquirrelRule(/./, this, consumes);
+		this.defaultRule = rl;
+		return rl;
 	},
 
 	appendToSelf : function appendToSelf(str, match, keepText) {
@@ -370,11 +383,22 @@ SquirrelNode.prototype = {
 				matches.push(m);
 			}
 		}
-		if (matches.length == 0) {
+		
+		if (matches.length == 0 && this.defaultRule === null) {
 			return null;
 		}
-
-		return MatchDescription.firstMatch(matches);
+						
+		var fm = MatchDescription.firstMatch(matches);
+		var findex = fm.startsAt;
+		
+		if( this.defaultRule !== null ) {
+			m = this.defaultRule.canMatch(str);
+			if( m.isMatch === true && m.startsAt < findex ) {
+				return m;
+			}
+		}
+		
+		return fm;
 	},
 
 	execute : function execute(matcher) {

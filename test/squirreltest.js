@@ -211,14 +211,25 @@ describe("squirrel", function(){
 	it("should work in notepad.js syntax", function(){
 		sqrl.under("doc").createDefaultChild("line");
 		sqrl.under("line").accept(/\t/).as("tab", true, false);
-		sqrl.under("line").accept(/\w/).as("content");
+		sqrl.under("line").acceptDefault().as("content");
 		sqrl.under("content").acceptLineEnd(false).toAscend();
-		sqrl.under("line").acceptLineEnd().asSibling("line");
+		sqrl.under("line").acceptLineEnd().asSibling("line", false, false);
 		sqrl.appendBuffer("Welcome\n\tOne Tab\n\t\tTwo Tabs\n\t\t\tThree\tTabs");
 		while(sqrl.canNibble()) {
-			console.log(sqrl.document);
 			sqrl.nibble();
 		}
+		console.log(sqrl.document.firstChild.lastChild);
+		console.log(sqrl.document);
+		var fc = sqrl.document.firstChild;
+		expect(fc.childNodes.length).toEqual(4);
+		expect(sqrl.document.getElementsByTagName("line").length).toEqual(4);
+		expect(fc.lastChild.childNodes.length).toEqual(4);
+		expect(fc.lastChild.childNodes[0].nodeName).toEqual("tab");
+		expect(fc.lastChild.childNodes[1].nodeName).toEqual("tab");
+		expect(fc.lastChild.childNodes[2].nodeName).toEqual("tab");
+		expect(fc.lastChild.childNodes[3].nodeName).toEqual("content");
+		expect(fc.lastChild.lastChild.firstChild.data).toEqual("Three\tTabs");
+		
 	});
 	
 });
