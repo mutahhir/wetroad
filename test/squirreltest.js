@@ -212,14 +212,12 @@ describe("squirrel", function(){
 		sqrl.under("doc").createDefaultChild("line");
 		sqrl.under("line").accept(/\t/).as("tab", true, false);
 		sqrl.under("line").acceptDefault().as("content");
-		sqrl.under("content").acceptLineEnd(false).toAscend();
+		sqrl.under("content").acceptLineEnd(false).toAscend(false);
 		sqrl.under("line").acceptLineEnd().asSibling("line", false, false);
 		sqrl.appendBuffer("Welcome\n\tOne Tab\n\t\tTwo Tabs\n\t\t\tThree\tTabs");
 		while(sqrl.canNibble()) {
 			sqrl.nibble();
 		}
-		console.log(sqrl.document.firstChild.lastChild);
-		console.log(sqrl.document);
 		var fc = sqrl.document.firstChild;
 		expect(fc.childNodes.length).toEqual(4);
 		expect(sqrl.document.getElementsByTagName("line").length).toEqual(4);
@@ -229,6 +227,80 @@ describe("squirrel", function(){
 		expect(fc.lastChild.childNodes[2].nodeName).toEqual("tab");
 		expect(fc.lastChild.childNodes[3].nodeName).toEqual("content");
 		expect(fc.lastChild.lastChild.firstChild.data).toEqual("Three\tTabs");
+	});
+	
+	it("should accept Jesse's strong test case 1", function(){
+		/*
+		 * this line has **strong** text
+		 * ->
+		 * <doc> 
+		 *    <line>this line has <strong>strong</strong> text</line>
+		 * </doc>
+		 */ 
+		sqrl.under("doc").createDefaultChild("line");
+		sqrl.under("line").accept(/\*\*/).as("strong", false, false);
+		sqrl.under("strong").accept(/\*\*/).toAscend(false);
+		sqrl.appendBuffer("this line has **strong** text");
+		while(sqrl.canNibble()){
+			sqrl.nibble();
+		}
+		expect(sqrl.document.getElementsByTagName("line")[0].childNodes.length).toEqual(3);
+		expect(sqrl.document.firstChild.firstChild.childNodes[1].nodeName).toEqual("strong");
+		expect(sqrl.document.firstChild.firstChild.childNodes[1].firstChild.data).toEqual("strong");
+		expect(sqrl.document.firstChild.firstChild.lastChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
+	});
+	
+	it("should accept Jesse's strong test case 2", function(){
+		/*
+		 * this line has **strong** text
+		 * ->
+		 * <doc>
+		 *     <line>this line has <strong>**strong**</strong> text</line>
+		 * </doc>
+		 */
+		sqrl.under("doc").createDefaultChild("line");
+		sqrl.under("line").accept(/\*\*/).as("strong", false, true);
+		sqrl.under("strong").accept(/\*\*/).toAscend(true);
+		sqrl.appendBuffer("this line has **strong** text");
+		while(sqrl.canNibble()){
+			sqrl.nibble();
+		}
+		expect(sqrl.document.getElementsByTagName("line")[0].childNodes.length).toEqual(3);
+		expect(sqrl.document.firstChild.firstChild.childNodes[1].nodeName).toEqual("strong");
+		expect(sqrl.document.firstChild.firstChild.childNodes[1].firstChild.data).toEqual("**strong**");
+		expect(sqrl.document.firstChild.firstChild.lastChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
+	});
+	
+	it("should accept Jesse's block test case", function(){
+		/*
+		 * Welcome
+		 *     One tab
+		 * ->
+		 * <doc>
+		 *     <block>
+		 *             <line>Welcome</line>
+		 *             <block>
+		 *                    <line>One tab</line>
+		 *             </block>
+		 *     </block>
+		 * </doc>
+		 */
+		sqrl.under("doc").createDefaultChild("block");
+		sqrl.under("block").createDefaultChild("line");
+		sqrl.under("line").acceptLineEnd(false).toAscend(false);
+		sqrl.under("block").acceptLineEnd().as("line", false, false);
+		sqrl.under("line").accept(/\t/).toBecome("block");
+		sqrl.appendBuffer("Welcome\n\tOne Tab");
+		while(sqrl.canNibble()){
+			sqrl.nibble();
+		}
+		var fc = sqrl.document.firstChild;
+		expect(fc.firstChild.nodeName).toEqual("block");
+		expect(fc.firstChild.firstChild.nodeName).toEqual("line");
+		expect(fc.firstChild.firstChild.firstChild.nodeType).
+			toEqual(sqrl.document.TEXT_NODE);
+		expect(fc.firstChild.childNodes[1].nodeName).toEqual("block");
+		expect(fc.firstChild.childNodes[1].firstChild.nodeName).toEqual("line");
 		
 	});
 	

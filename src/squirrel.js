@@ -112,9 +112,11 @@ SquirrelRule.prototype = {
 				this.parentNode.handOverToSibling(str, matchStr, keepText);
 			};
 	},
-		   
-	toAscend: function toAscend(){
+	   
+	toAscend: function toAscend(/*keepText*/){
+		var keepText = arguments.length > 0? arguments[0] : true;
 		this.onMatch = function( matchStr ) {
+			if( keepText ) this.parentNode.appendText(matchStr);
 			this.parentNode.sqrl.ascend();	
 		};
 	},
@@ -126,7 +128,7 @@ SquirrelRule.prototype = {
 			this.parentNode.endEncountered();
 		};
 	},
-	
+
 	toBecome: function toBecome(str /* , bool */){
 		var keepText = arguments.length > 1 ? arguments[1] : true;
 
@@ -218,6 +220,21 @@ SquirrelNode.prototype = {
 			node.appendChild(txt);
 		}
 		this.sqrl.appendToCurrent(node);
+	},
+	
+	appendText: function appendText(text /* appendToCurent */) {
+		var sqrl = this.sqrl, 
+			doc = sqrl.document,
+			node = sqrl.currentNode,
+			child = node.hasChildNodes()? node.lastChild : null,
+			appendToCurrent = arguments.length > 1? arguments[1] : true;
+		
+		if( appendToCurrent && child.nodeType == doc.TEXT_NODE) {
+			child.data += text;
+		} else {
+			txt = doc.createTextNode(text);
+			node.appendChild(txt);
+		}
 	},
 	
 	getDefaultChild: function getDefaultChild(ownerName, node, addToNode){
