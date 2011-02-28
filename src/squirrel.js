@@ -106,8 +106,11 @@ SquirrelRule.prototype = {
 
 	asChild: this.as,
 	
-	asSibling: function asSibling( str /*, bool, bool */){
-			
+	asSibling: function asSibling( str /*, bool*/){
+			var keepText = arguments.length > 2? arguments[2]: true;
+			this.onMatch = function(matchStr) {
+				this.parentNode.handOverToSibling(str, matchStr, keepText);
+			};
 	},
 		   
 	toAscend: function toAscend(){
@@ -301,6 +304,27 @@ SquirrelNode.prototype = {
 		}
 		
 		this.sqrl.moveToChild(node);
+	},
+	
+	handOverToSibling: function handOverToSibling( str, match, keepText ){
+		var sqrl = this.sqrl, 
+			doc = sqrl.document,
+			node = doc.createElement(str),
+			txt = null;
+		
+		if( sqrl.currentNode.parentNode === null ) {
+			throw "cannot have multiple root nodes";
+		}
+		
+		node = this.getDefaultChild(str, node, true);
+		
+		if( match && match.length > 0 && keepText ){
+			txt = doc.createTextNode(match);
+			node.appendChild(txt);
+		}
+		
+		this.sqrl.moveToSibling(node);
+		
 	},
 	
 	become: function become(str, match, keepText) {
