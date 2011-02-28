@@ -212,9 +212,8 @@ describe("squirrel", function(){
 		sqrl.under("doc").createDefaultChild("line");
 		sqrl.under("line").accept(/\t/).as("tab", true, false);
 		sqrl.under("line").accept(/\w/).as("content");
-		sqrl.under("content").acceptLineEnd().asEndMarker();
-		sqrl.under("content").closeParentAfterEnd();
-		sqrl.under("line").recreateAfterEnd();
+		sqrl.under("content").acceptLineEnd(false).toAscend();
+		sqrl.under("line").acceptLineEnd().asSibling("line");
 		sqrl.appendBuffer("Welcome\n\tOne Tab\n\t\tTwo Tabs\n\t\t\tThree\tTabs");
 		while(sqrl.canNibble()) {
 			console.log(sqrl.document);

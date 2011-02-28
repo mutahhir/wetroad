@@ -74,6 +74,7 @@ function SquirrelRule(rgx, node) {
 		throw new TypeError("expected a regular expression literal or string as first argument");
 	this.onMatch = null;
 	this.isMarker = false;
+	this.consumes = arguments.length > 2? arguments[2] : true;
 }
 
 SquirrelRule.prototype = {
@@ -87,12 +88,12 @@ SquirrelRule.prototype = {
 	 * @optional keepText {bool} keep the matched text within the element, or
 	 *           discard
 	 */
-	as : function as(str /* , bool, bool */) {
+	as : function as(str /* , bool, bool */) {	// acts as asChild
 		var returnOnCreate = arguments.length > 1 ? arguments[1] : false;
 		var keepText = arguments.length > 2 ? arguments[2] : true;
 
 		// register with main squirrel
-		this.parentNode.parent.under(str);
+		this.parentNode.sqrl.under(str);
 
 		this.onMatch = function(matchStr) {
 			if (returnOnCreate) {
@@ -102,6 +103,19 @@ SquirrelRule.prototype = {
 			}
 		};
 	},
+
+	asChild: this.as,
+	
+	asSibling: function asSibling( str /*, bool, bool */){
+			
+	},
+		   
+	toAscend: function toAscend(){
+		this.onMatch = function( matchStr ) {
+			this.parentNode.sqrl.ascend();	
+		};
+	},
+
 	
 	asEndMarker: function asEndMarker() {
 		this.isMarker = true;
@@ -114,7 +128,7 @@ SquirrelRule.prototype = {
 		var keepText = arguments.length > 1 ? arguments[1] : true;
 
 		// register with main squirrel
-		this.parentNode.parent.under(str);
+		this.parentNode.sqrl.under(str);
 		
 		this.onMatch = function(matchStr) {
 			this.parentNode.become(str, matchStr, keepText);
@@ -156,7 +170,7 @@ SquirrelRule.prototype = {
  * @returns {SquirrelNode} a new instance of SquirrelNode
  */
 function SquirrelNode(name, par) {
-	this.parent = par;
+	this.sqrl = par;
 	this.name = name;
 	this.rules = [];
 	this.defaultChildName = null;
@@ -164,26 +178,21 @@ function SquirrelNode(name, par) {
 }
 
 SquirrelNode.prototype = {
-	accept : function accept(rx) {
-		var rl = new SquirrelRule(rx, this);
+	accept : function accept(rx /*, andConsume*/) {
+		var consumes = arguments.length > 1? arguments[1] : true;
+		var rl = new SquirrelRule(rx, this, consumes);
 		this.rules.push(rl);
 		return rl;
 	},
 	
-	acceptLineEnd: function acceptLineEnd() {
+	acceptLineEnd: function acceptLineEnd(/* andConsume */) {
+		if( arguments.length > 0 )
+			return this.accept(Squirrel.EOL_REGEX, arguments[0]);
 		return this.accept(Squirrel.EOL_REGEX);		
-	},
-	
-	closeParentAfterEnd: function closeParentAfterEnd(){
-		
-	},
-	
-	recreateAfterEnd: function recreateAfterEnd(){
-		
 	},
 
 	appendToSelf : function appendToSelf(str, match, keepText) {
-		var doc = this.parent.document, node = doc.createElement(str),
+		var doc = this.sqrl.document, node = doc.createElement(str),
 			txt = null, descendant = null;
 		
 		descendant = this.getDefaultChild(str, node, true);
@@ -192,11 +201,11 @@ SquirrelNode.prototype = {
 			txt = doc.createTextNode(match);
 			node.appendChild(txt);
 		}
-		this.parent.appendToCurrent(node);
+		this.sqrl.appendToCurrent(node);
 	},
 	
 	getDefaultChild: function getDefaultChild(ownerName, node, addToNode){
-		var sqrl = this.parent,
+		var sqrl = this.sqrl,
 			doc = sqrl.document, child = null,
 			templ = sqrl.under(ownerName),
 			defChild = templ.defaultChildName;
@@ -212,7 +221,7 @@ SquirrelNode.prototype = {
 	},
 	
 	synchronizeDefaultChildrenFor: function synchronizeDefaultChildrenFor(name){
-		var sqrl = this.parent,
+		var sqrl = this.sqrl,
 		    doc = sqrl.document,
 		    templ = sqrl.under(name), 
 		    i = 0,
@@ -242,14 +251,14 @@ SquirrelNode.prototype = {
 			
 			if( currNode === node ){
 				// modify the rules
-				sqrl.setCurrent(lowest);
+				sqrl.setState(lowest);
 			}
 		}
 		
 	},
 	
 	createDefaultChild: function createDefaultChild(name){
-		var sqrl = this.parent;
+		var sqrl = this.sqrl;
 		
 		sqrl.under(name);	// register with parent, incase this is the
 		// only instance
@@ -261,13 +270,13 @@ SquirrelNode.prototype = {
 	removeDefaultChildren: function removeDefaultChildren(node){
 		if( !Utils.isNode(node) ) return;
 		
-		var templ = this.parent.under(node.nodeName);
+		var templ = this.sqrl.under(node.nodeName);
 		var n = node, p = null;
 		var depth = 0;
 		
 		while( templ.defaultChildName !== null && n.firstChild.nodeName === templ.defaultChildName ) {
 				n = n.firstChild;
-				templ = this.parent.under(n.nodeName);
+				templ = this.sqrl.under(n.nodeName);
 				depth += 1;
 		}
 		
@@ -280,7 +289,7 @@ SquirrelNode.prototype = {
 	},
 	
 	handOverTo: function handOverTo(str, match, keepText){
-		var doc = this.parent.document,
+		var doc = this.sqrl.document,
 		    node = doc.createElement(str),
 		    txt = null;
 		
@@ -291,12 +300,11 @@ SquirrelNode.prototype = {
 			node.appendChild(txt);
 		}
 		
-		this.parent.moveOnTo(node);
-		
+		this.sqrl.moveToChild(node);
 	},
 	
 	become: function become(str, match, keepText) {
-		var sqrl = this.parent,
+		var sqrl = this.sqrl,
 			doc = sqrl.document,
 		    node = doc.createElement(str),
 		    txt = null,
@@ -312,13 +320,13 @@ SquirrelNode.prototype = {
 		this.removeDefaultChildren(curr);
 		
 		Utils.moveChildrenTo(node,curr);
-		this.parent.changeCurrentTo(node);
+		this.sqrl.changeCurrentTo(node);
 	},
 	
 	endEncountered: function endEncountered(){
 		// this isn't really reliable because of default children
-		// this.parent.popState();
-		this.parent.ascend();
+		// this.sqrl.popState();
+		this.sqrl.ascend();
 	},
 
 	/**
@@ -350,9 +358,12 @@ SquirrelNode.prototype = {
 			return -1;
 
 		var rl = matcher.matchingRule;
+		var con = rl.consumes;
 		rl.onMatch(matcher.matchedString);
 		
-		return rl.isMarker? 0 : matcher.matchedString.length;
+		if( !rl.consumes || rl.isMarker )
+			return 0;
+		return matcher.matchedString.length;
 	}
 };
 
@@ -372,8 +383,6 @@ function Squirrel(rootName) {
 	this.document = null;
 	this.currentTemplate = null;
 	
-	this.templateStack = [];
-
 	this.buffer = null;
 
 	this.onNewDocument = null; // event for new document
@@ -421,24 +430,35 @@ Squirrel.prototype = {
 		this.currentNode.appendChild(node);
 	},
 	
-	setCurrent: function setCurrent(node /* , replaceState */){
-		var replaceState = arguments.length > 1? arguments[1] : false;
-		if( replaceState ) { 
-			this.popState(false);
-			this.pushCustomState(node, this.under(node.nodeName));
-		} else {
-			this.pushCurrentState();
-		}
+	setState: function setState(node /* , replaceState */){
 		this.currentNode = node;
 		this.currentTemplate = this.under(node.nodeName);
 	},
 	
-	moveOnTo: function moveOnTo(node) {
+	moveToChild: function moveToChild(node) {
 		var name= node.nodeName;
-		this.pushCurrentState();
 		this.currentNode.appendChild(node);
 		this.currentNode = node;
 		this.currentTemplate = this.under(name);
+	},
+	
+	moveToSibling: function moveToSibling(node) {
+		var name = node.nodeName, curNode = this.currentNode;
+		if( curNode.parentNode === null  ) {
+			// we cant have a sibling for root
+	                throw "Cannot have a sibling node for root";
+		}
+	        curNode.parentNode.appendChild(node);
+		this.setState(node);
+	},
+	
+	morphTo: function morphTo(node) {
+		var name = node.nodeName, curNode = this.currentNode;
+		if( curNode.parentNode === null ) {
+			throw "Cannot morph the root node";
+		}
+		curNode.parentNode.replaceChild(node, curNode);
+		this.setState(node);	
 	},
 	
 	changeCurrentTo: function changeCurrentTo(node){
@@ -448,26 +468,6 @@ Squirrel.prototype = {
 		this.currentNode = node;
 		this.currentTemplate = templ;
 		templ.synchronizeDefaultChildrenFor(node.nodeName);
-	},
-	
-	pushCurrentState: function pushCurrentState() {
-		this.templateStack.push([this.currentTemplate, this.currentNode]);
-	},
-	
-	pushCustomState: function pushCustomState(node,rule) {
-		this.templateStack.push([rule, node]);
-	},
-	
-	popState: function popState(/* setState */) {
-		if( this.templateStack.length == 0 ) return;
-		
-		var setState = arguments.length > 0? arguments[0] : true;
-		
-		var popped = this.templateStack.pop();
-		if( setState ) {
-			this.currentTemplate = popped[0];
-			this.currentNode = popped[1];
-		}
 	},
 	
 	positionAtDocumentStart : function positionAtDocumentStart() {
@@ -483,8 +483,6 @@ Squirrel.prototype = {
 	nibble : function nibble() {
 		var fm = this.currentTemplate.firstMatch(this.buffer), txt = null, bufferConsumeCount = 0;
 
-		
-		
 		if (fm === null) {
 			this.noRulesMatched(this.buffer);
 			bufferConsumeCount = this.buffer.length;
@@ -532,7 +530,7 @@ Squirrel.prototype = {
 			currNode = currNode.parentNode;
 		}
 		
-		this.setCurrent(currNode, false);	// we don't want to push state,
-											// we'll replace it
+		this.setState(currNode);
+		return true;
 	}
 };
