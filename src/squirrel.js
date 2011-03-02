@@ -479,12 +479,14 @@ SquirrelNode.prototype = {
 	 */
 	firstMatch : function firstMatch(str) {
 		var rl = this.rules,
-		    len = rl.length, matches = [], ri, m;
+		    len = rl.length, matches = [], ri, m,
+		    hasDefault = this.defaultRule !== null;
 		
-		if (len === 0)
-			return null;
-		
-		if( len === 1 && this.defaultRule === null ) {
+		if (len === 0) {
+			return hasDefault? this.defaultRule.canMatch(str) : null;
+		}
+				
+		if( len === 1 && !hasDefault ) {
 			return rl[0].canMatch(str);
 		}
 		
@@ -498,7 +500,7 @@ SquirrelNode.prototype = {
 			}
 		}
 		
-		if (matches.length == 0 && this.defaultRule === null) {
+		if (matches.length == 0 && !hasDefault) {
 			return null;
 		}
 
@@ -513,7 +515,7 @@ SquirrelNode.prototype = {
 		
 		var findex = fm.startsAt;
 
-		if( this.defaultRule !== null ) {
+		if( hasDefault ) {
 			m = this.defaultRule.canMatch(str);
 			if( m.isMatch === true && m.startsAt < findex ) {
 				fm.matchingRule.markAsUnused(fm);
