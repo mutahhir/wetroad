@@ -76,9 +76,8 @@ describe("squirrel", function(){
 		var fc = sqrl.document.firstChild;
 		expect(fc.firstChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
 		sqrl.nibble();
-		expect(fc.childNodes.length).toEqual(2);
+		expect(fc.childNodes.length).toEqual(3);
 		expect(fc.childNodes[1].nodeName).toEqual("world");
-		sqrl.nibble();
 		expect(fc.lastChild.data).toEqual("ld");
 		expect(sqrl.buffer.length).toEqual(0);
 	});
@@ -218,6 +217,7 @@ describe("squirrel", function(){
 		while(sqrl.canNibble()) {
 			sqrl.nibble();
 		}
+		console.log(sqrl.document);
 		var fc = sqrl.document.firstChild;
 		expect(fc.childNodes.length).toEqual(4);
 		expect(sqrl.document.getElementsByTagName("line").length).toEqual(4);
@@ -302,6 +302,51 @@ describe("squirrel", function(){
 		expect(fc.firstChild.childNodes[1].nodeName).toEqual("block");
 		expect(fc.firstChild.childNodes[1].firstChild.nodeName).toEqual("line");
 		
+	});
+	
+	it("should be able to write asInline", function () {
+		sqrl.under("doc").createDefaultChild("line");
+		sqrl.under("line").accept(/\t/).asInline("tab", false);
+		sqrl.under("line").acceptDefault().as("content");
+		sqrl.under("content").acceptLineEnd(false).toAscend(false);
+		sqrl.under("line").acceptLineEnd().asSibling("line", false);
+		sqrl.appendBuffer("Welcome\n\tOne Tab\n\t\tTwo Tabs\n\t\t\tThree\tTabs");
+		while(sqrl.canNibble()) {
+			sqrl.nibble();
+		}
+		console.log(sqrl.document);
+		var fc = sqrl.document.firstChild;
+		expect(fc.childNodes.length).toEqual(4);
+		expect(sqrl.document.getElementsByTagName("line").length).toEqual(4);
+		expect(fc.lastChild.childNodes.length).toEqual(4);
+		expect(fc.lastChild.childNodes[0].nodeName).toEqual("tab");
+		expect(fc.lastChild.childNodes[1].nodeName).toEqual("tab");
+		expect(fc.lastChild.childNodes[2].nodeName).toEqual("tab");
+		expect(fc.lastChild.childNodes[3].nodeName).toEqual("content");
+		expect(fc.lastChild.lastChild.firstChild.data).toEqual("Three\tTabs");
+	});
+	
+	it("should invoke consumption observers", function(){
+		function TempObject() {
+			this.I = 0;
+		};
+		var obj = new TempObject();
+		var obj2 = new TempObject();
+		
+		sqrl.onAfterConsume(obj, function(sqrl,amnt) {
+			this.I+= amnt;
+		});
+		
+		sqrl.onAfterConsume(obj2, function(sqrl,amnt) {
+			this.I += amnt*2;
+		});
+		
+		sqrl.appendBuffer("1234567");
+		while(sqrl.canNibble()) {
+			sqrl.nibble();
+		}
+		expect(obj.I).toEqual(7);
+		expect(obj2.I).toEqual(14);
 	});
 	
 });

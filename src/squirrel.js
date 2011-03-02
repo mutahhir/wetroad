@@ -1,19 +1,56 @@
-/**
- * 
- * Squirrel parser is basically a PEG-like parser but it does a few things
- * differently
- * 
- * Usually parsers take in a text source, and create AST (Abstract Syntax Trees)
- * from them using predefined rules. However, with squirrel, we're going to do
- * something a little different. We're going to create the rules as JavaScript
- * code, give squirrel an XML Document to play around with, and pass messages to
- * squirrel to update the document
- * 
- */
+
+function UnusedMatch( sqrl, rule, index, matchStr ) {
+	this.rule = rule;
+	this.index = index;
+	this.matchStr = matchStr;
+	sqrl.onAfterConsume(this, this.onConsumeText);
+	this.isValid = true;
+}
+
+UnusedMatch.prototype = {
+	onConsumeText: function(sqrl, amount) {
+		if( amount > this.index ) {
+			this.isValid = false;
+			return false;
+		}
+		
+		this.index -= amount;
+		return true;
+	},
+	
+	createMatchDescription: function() {
+		if( !this.isValid ) return null;
+		return new MatchDescription(this.isValid, this.index,
+					    this.matchStr, this.rule );
+	}
+};
+
+function UnMatch( sqrl, rule ) {
+	this.rule = rule;
+	sqrl.onBeforeAppend(this, this.onAppendText);
+	this.isValid = false;
+}
+
+UnMatch.prototype = {
+	onAppendText: function onAppendText(sqrl, str) {
+		var arr = this.rule.match.exec(str);
+		if( arr !== null ) {
+			this.isValid = true;
+			return false;
+		}
+		return true;
+	},
+	
+	createMatchDescription: function() {
+		if( !this.isValid ) return null;
+		return new MatchDescription(this.isValid, this.index,
+					    this.matchStr, this.rule);
+	}
+};
 
 /**
- * ------------------------------------------------------------------------ A
- * Match description is returned whenever a SquirrelRule is asked to match a
+ * ------------------------------------------------------------------------
+ * A Match description is returned whenever a SquirrelRule is asked to match a
  * string.
  * 
  * @param does
@@ -31,14 +68,19 @@ function MatchDescription(does, startsWhere, string, using) {
 	this.matchingRule = using;
 }
 
-MatchDescription.nullMatch = function nullMatch() {
-	return new MatchDescription(false, 0, null, null);
-};
+MatchDescription.nullMatch = (function(){
+		var nuller = new MatchDescription(false, 0, null, null);
+		return function() {
+			return nuller; 
+		};
+})();
 
 MatchDescription.firstMatch = function firstMatch(arr) {
-	var min = null, minI = -1 >>> 1, // the largest possible integer
-	// supported
-	m;
+	var min = null, minI = -1 >>> 1, // the largest possible integer supported
+	    m;
+	    
+	if( arr.length === 1 ) return arr[0];
+	
 	for ( var i = 0; i < arr.length; i++) {
 		m = arr[i];
 		if (m.startsAt < minI) {
@@ -75,6 +117,8 @@ function SquirrelRule(rgx, node) {
 	this.onMatch = null;
 	this.isMarker = false;
 	this.consumes = arguments.length > 2? arguments[2] : true;
+	this.unused = null;
+	this.unmatched = null;
 }
 
 SquirrelRule.prototype = {
@@ -102,15 +146,26 @@ SquirrelRule.prototype = {
 				this.parentNode.handOverTo(str, matchStr, keepText);
 			}
 		};
+		
+		return this;
 	},
-
-	asChild: this.as,
+	
+	asChild: function asChild( str /*, isInline, keepText */) {
+		this.as.apply(this, arguments);
+	},
+	
+	asInline: function asInline(str /*, keepText*/){
+		var ap = Array.prototype;
+		ap.splice.call(arguments, 1, 0, true);
+		this.asChild.apply(this, ap.slice.apply(arguments,[]));
+	},
 	
 	asSibling: function asSibling( str /*, bool*/){
-			var keepText = arguments.length > 2? arguments[2]: true;
+			var keepText = arguments.length > 1? arguments[1]: true;
 			this.onMatch = function(matchStr) {
 				this.parentNode.handOverToSibling(str, matchStr, keepText);
 			};
+			return this;
 	},
 	   
 	toAscend: function toAscend(/*keepText*/){
@@ -129,7 +184,7 @@ SquirrelRule.prototype = {
 		};
 	},
 
-	toBecome: function toBecome(str /* , bool */){
+	toBecome: function toBecome(str /*, keepText*/){
 		var keepText = arguments.length > 1 ? arguments[1] : true;
 
 		// register with main squirrel
@@ -148,17 +203,51 @@ SquirrelRule.prototype = {
 	 * @returns {MatchDescription} returns a match description
 	 */
 	canMatch : function canMatch(str) {
+		if( this.unmatched && !this.unmatched.isValid ) {
+			return MatchDescription.nullMatch();
+		}
+		if( this.unused && this.unused.isValid )
+			return this.unused.createMatchDescription();
+		
 		if (str === null || str.length === 0) {
 			return MatchDescription.nullMatch();
 		}
-
+		
 		var arr = this.match.exec(str);
+		
 		if (arr == null) {
+			this.markAsUnmatched();
 			return MatchDescription.nullMatch();
 		}
 
 		// we have a potential match
 		return new MatchDescription(true, arr.index, arr[0], this);
+	},
+	
+	markAsUnused: function markAsUnused(fm) {
+		if( !this.hasUnused() )
+			this.unused = new UnusedMatch(this.parentNode.sqrl,
+					      this, fm.startsAt, fm.matchedString);
+	},
+	
+	markAsUnmatched: function markAsUnmatched() {
+		if( !this.hasUnmatched() )
+			this.unmatched = new UnMatch(this.parentNode.sqrl,
+						       this);
+	},
+	
+	hasUnused: function hasUnused() {
+		if( this.unused !== null ) {
+			return this.unused.isValid;
+		}
+		return false;
+	},
+	
+	hasUnmatched: function hasUnmatched() {
+		if( this.unmatched !== null ) {
+			return !this.unmatched.isValid;
+		}
+		return false;
 	}
 };
 
@@ -240,7 +329,7 @@ SquirrelNode.prototype = {
 	getDefaultChild: function getDefaultChild(ownerName, node, addToNode){
 		var sqrl = this.sqrl,
 			doc = sqrl.document, child = null,
-			templ = sqrl.under(ownerName),
+			templ = sqrl.nodeTemplates[ownerName],
 			defChild = templ.defaultChildName;
 		
 		if(defChild !== null ){
@@ -256,7 +345,7 @@ SquirrelNode.prototype = {
 	synchronizeDefaultChildrenFor: function synchronizeDefaultChildrenFor(name){
 		var sqrl = this.sqrl,
 		    doc = sqrl.document,
-		    templ = sqrl.under(name), 
+		    templ = sqrl.nodeTemplates[name], 
 		    i = 0,
 		    currNode = sqrl.currentNode;
 		
@@ -303,13 +392,13 @@ SquirrelNode.prototype = {
 	removeDefaultChildren: function removeDefaultChildren(node){
 		if( !Utils.isNode(node) ) return;
 		
-		var templ = this.sqrl.under(node.nodeName);
+		var templ = this.sqrl.nodeTemplates[node.nodeName];
 		var n = node, p = null;
 		var depth = 0;
 		
 		while( templ.defaultChildName !== null && n.firstChild.nodeName === templ.defaultChildName ) {
 				n = n.firstChild;
-				templ = this.sqrl.under(n.nodeName);
+				templ = this.sqrl.nodeTemplates[n.nodeName];
 				depth += 1;
 		}
 		
@@ -389,9 +478,17 @@ SquirrelNode.prototype = {
 	 * @returns {String} return null if no match, matched string otherwise
 	 */
 	firstMatch : function firstMatch(str) {
-		var rl = this.rules, len = rl.length, matches = [], ri, m;
+		var rl = this.rules,
+		    len = rl.length, matches = [], ri, m;
+		
 		if (len === 0)
 			return null;
+		
+		if( len === 1 && this.defaultRule === null ) {
+			return rl[0].canMatch(str);
+		}
+		
+		
 
 		for ( var i = 0; i < len; i++) {
 			ri = rl[i];
@@ -404,20 +501,31 @@ SquirrelNode.prototype = {
 		if (matches.length == 0 && this.defaultRule === null) {
 			return null;
 		}
-						
+
 		var fm = MatchDescription.firstMatch(matches);
-		var findex = fm.startsAt;
 		
+		for( var k = 0; k < matches.length; k++ ) {
+			var mk = matches[k];
+			if(mk !== fm) {
+				mk.matchingRule.markAsUnused(mk);
+			}
+		}
+		
+		var findex = fm.startsAt;
+
 		if( this.defaultRule !== null ) {
 			m = this.defaultRule.canMatch(str);
 			if( m.isMatch === true && m.startsAt < findex ) {
+				fm.matchingRule.markAsUnused(fm);
 				return m;
 			}
 		}
 		
 		return fm;
 	},
-
+	
+	
+	
 	execute : function execute(matcher) {
 		if (matcher == null)
 			return -1;
@@ -453,12 +561,16 @@ function Squirrel(rootName) {
 	this.onNewDocument = null; // event for new document
 	this.onNewLine = null; // event for new line encountered
 	this.onTextEntry = null; // event for text insertion
+	
+	this.consumptionObservers = null;
+	this.appendObservers = null;
 
 	this.initialize();
 	
 	// From Wikipedia and
 	// http://blog.stevenlevithan.com/archives/javascript-regex-and-unicode
-	Squirrel.EOL_REGEX = /\u000d\u000a|\u000d|\u000a|\u2028|\u2029|\u000c|\u0085/;
+	Squirrel.EOL_REGEX = /\u000d(?:\u000a)?|\u000a|\u2028|\u2029|\u000c|\u0085/;
+	
 }
 
 Squirrel.prototype = {
@@ -480,6 +592,8 @@ Squirrel.prototype = {
 		this.currentNode = this.document.firstChild;
 		this.currentTemplate = this.under(this.rootName);
 		this.buffer = "";
+		this.consumptionObservers = [];
+		this.appendObservers = [];
 	},
 
 	/**
@@ -497,14 +611,14 @@ Squirrel.prototype = {
 	
 	setState: function setState(node /* , replaceState */){
 		this.currentNode = node;
-		this.currentTemplate = this.under(node.nodeName);
+		this.currentTemplate = this.nodeTemplates[node.nodeName];
 	},
 	
 	moveToChild: function moveToChild(node) {
 		var name= node.nodeName;
 		this.currentNode.appendChild(node);
 		this.currentNode = node;
-		this.currentTemplate = this.under(name);
+		this.currentTemplate = this.nodeTemplates[name];
 	},
 	
 	moveToSibling: function moveToSibling(node) {
@@ -528,7 +642,7 @@ Squirrel.prototype = {
 	
 	changeCurrentTo: function changeCurrentTo(node){
 		var curr = this.currentNode;
-		var templ = this.under(node.nodeName);
+		var templ = this.nodeTemplates[node.nodeName];
 		curr.parentNode.replaceChild(node,curr);
 		this.currentNode = node;
 		this.currentTemplate = templ;
@@ -546,29 +660,32 @@ Squirrel.prototype = {
 	},
 
 	nibble : function nibble() {
-		var fm = this.currentTemplate.firstMatch(this.buffer), txt = null, bufferConsumeCount = 0;
+		var fm = this.currentTemplate.firstMatch(this.buffer),
+		    txt = null, bufferConsumeCount = 0;
 
-		if (fm === null) {
+		if (fm === null || fm.isMatch === false ) {
 			this.noRulesMatched(this.buffer);
 			bufferConsumeCount = this.buffer.length;
-		} else if (fm.startsAt > 0) {
-			txt = this.buffer.substring(0, fm.startsAt);
-			this.noRulesMatched(txt);
-			bufferConsumeCount = txt.length;
 		} else {
-			var cons = this.currentTemplate.execute(fm);
-			bufferConsumeCount = cons;
+			if (fm.startsAt > 0) {
+				txt = this.buffer.substring(0, fm.startsAt);
+				this.noRulesMatched(txt);
+				bufferConsumeCount = txt.length;
+			}
+			bufferConsumeCount += this.currentTemplate.execute(fm);
 		}
 
 		this.consumeBuffer(bufferConsumeCount);
 	},
 
 	appendBuffer : function appendBuffer(str) {
+		this.invokeObserversFrom(this.appendObservers, str);
 		this.buffer += str;
 	},
 
 	consumeBuffer : function consumeBuffer(cnt) {
 		this.buffer = this.buffer.substring(cnt);
+		this.invokeObserversFrom(this.consumptionObservers, cnt);
 	},
 
 	noRulesMatched : function noRulesMatched(str) {
@@ -597,5 +714,40 @@ Squirrel.prototype = {
 		
 		this.setState(currNode);
 		return true;
+	},
+	
+	invokeObserversFrom: function invokeObserversFrom(arr, arg) {
+		
+		var marks = [];
+		for( var i = 0; i < arr.length; i++ ){
+			var j = arr[i];
+			if( j["fcn"].call( j["object"], this, arg) === false ) {
+				marks.push(i);
+			}
+		}
+		marks.reverse();
+		for( i = 0; i < marks.length; i++ ) {
+			arr.splice(marks[i],1);
+		}
+	},
+	
+	onBeforeAppend: function onAfterAppend( obj, fcn ) {
+		this.appendObservers.push({"object":obj, "fcn":fcn});
+	},
+	
+	onAfterConsume: function onAfterConsume( obj, fcn ) {
+		this.consumptionObservers.push(
+			{"object": obj, "fcn": fcn}
+		);
+	},
+	
+	removeConsumptionObserver: function removeConsumptionObserver( obj, fcn ) {
+		for( var i = 0; i < this.consumptionObservers.length; i++ ){
+			var j = this.consumptionObservers[i]["object"].rule;
+			if( j.match === obj.rule.match && j.parentNode.name === obj.rule.parentNode.name ) {
+				this.consumptionObservers.splice(i,1);
+				return;
+			}
+		}
 	}
 };
