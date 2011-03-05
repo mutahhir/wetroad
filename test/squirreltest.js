@@ -349,4 +349,37 @@ describe("squirrel", function(){
 		expect(obj2.I).toEqual(14);
 	});
 	
+	it("should be able to handle forward assertions", function(){ 
+		/*
+		 * **one**
+		 * **two
+		 * three
+		 * ->
+		 * <doc>
+		 * 	<p><strong>**one**</strong></p>
+		 * 	<p>**two</p>
+		 * 	<p>three</p>
+		 * </doc>
+		 */
+		sqrl.under("doc").createDefaultChild("p");
+		sqrl.under("p").accept(/\*\*(?=[^*]*\*\*)/).as("strong");
+		sqrl.under("strong").accept(/\*\*/).toAscend();
+		sqrl.under("p").acceptLineEnd().asSibling("p", false);
+		
+		sqrl.appendBuffer("**one**\n**two\nthree");
+		
+		while(sqrl.canNibble()) sqrl.nibble();
+		
+		console.log(sqrl.document);
+		var fc = sqrl.document.firstChild;
+		expect(fc.childNodes.length).toEqual(3);
+		expect(fc.childNodes[0].nodeName).toEqual("p");
+		expect(fc.childNodes[1].nodeName).toEqual("p");
+		expect(fc.childNodes[2].nodeName).toEqual("p");
+		expect(fc.childNodes[0].firstChild.nodeName).toEqual("strong");
+		expect(fc.childNodes[1].firstChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
+		expect(fc.childNodes[1].firstChild.data).toEqual("**two");
+		
+	});
+	
 });
