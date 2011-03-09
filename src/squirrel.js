@@ -109,7 +109,7 @@ MatchDescription.firstMatch = function firstMatch(arr) {
 function SquirrelRule(rgx, node) {
 	this.parentNode = node;
 	if(typeof rgx === "string") {
-		this.match = new RegExp(rgx);
+		this.match = new RegExp(Utils.escapeRegexp(rgx));
 	} else if (rgx instanceof RegExp) {
 		this.match = rgx;
 	} else
@@ -168,11 +168,12 @@ SquirrelRule.prototype = {
 			return this;
 	},
 	   
-	toAscend: function toAscend(/*keepText*/){
+	toAscend: function toAscend(/*keepText, number*/){
 		var keepText = arguments.length > 0? arguments[0] : true;
+		var ascentionAmount = arguments.length > 1? arguments[1] : 1;
 		this.onMatch = function( matchStr ) {
 			if( keepText ) this.parentNode.appendText(matchStr);
-			this.parentNode.sqrl.ascend();	
+			this.parentNode.sqrl.ascend(ascentionAmount);	
 		};
 	},
 
@@ -296,6 +297,10 @@ SquirrelNode.prototype = {
 		var rl = new SquirrelRule(/./, this, consumes);
 		this.defaultRule = rl;
 		return rl;
+	},
+	
+	acceptPair: function acceptPair(start, end /*, andConsume */) {
+		
 	},
 
 	appendToSelf : function appendToSelf(str, match, keepText) {
@@ -467,8 +472,6 @@ SquirrelNode.prototype = {
 	},
 	
 	endEncountered: function endEncountered(){
-		// this isn't really reliable because of default children
-		// this.sqrl.popState();
 		this.sqrl.ascend();
 	},
 
@@ -489,8 +492,6 @@ SquirrelNode.prototype = {
 		if( len === 1 && !hasDefault ) {
 			return rl[0].canMatch(str);
 		}
-		
-		
 
 		for ( var i = 0; i < len; i++) {
 			ri = rl[i];

@@ -52,3 +52,10 @@ Utils.removeWrappingNode = function removeWrappingNode( parent, node ){
 	Utils.moveChildrenTo(parent, node);
 	parent.removeChild(node);
 };
+
+// Courtesy:
+// http://snipplr.com/view/9649/escape-regular-expression-characters-in-string/
+Utils.escapeRegexp = function escapeRegexp( str ) {
+	var specials = new RegExp("[.*+?|()\\[\\]{}\\\\]", "g"); // .*+?|()[]{}\
+	return str.replace(specials, "\\$&");
+}

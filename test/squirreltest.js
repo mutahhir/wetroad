@@ -370,7 +370,6 @@ describe("squirrel", function(){
 		
 		while(sqrl.canNibble()) sqrl.nibble();
 		
-		console.log(sqrl.document);
 		var fc = sqrl.document.firstChild;
 		expect(fc.childNodes.length).toEqual(3);
 		expect(fc.childNodes[0].nodeName).toEqual("p");
@@ -379,7 +378,10 @@ describe("squirrel", function(){
 		expect(fc.childNodes[0].firstChild.nodeName).toEqual("strong");
 		expect(fc.childNodes[1].firstChild.nodeType).toEqual(sqrl.document.TEXT_NODE);
 		expect(fc.childNodes[1].firstChild.data).toEqual("**two");
-		
+	});
+	
+	it("should update indexes when text is added to a node", function() {
+		sqrl.under("doc").acceptDefault().asText();
 	});
 	
 });
