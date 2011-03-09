@@ -380,8 +380,18 @@ describe("squirrel", function(){
 		expect(fc.childNodes[1].firstChild.data).toEqual("**two");
 	});
 	
-	it("should update indexes when text is added to a node", function() {
-		sqrl.under("doc").acceptDefault().asText();
+	it("should be at reset state when created", function() {
+		// expect the start of the document to be reset
+		expect(sqrl.currentNode).toEqual(sqrl.document.firstChild);
+		expect(sqrl.offset).toEqual(0);
+	});
+	
+	it("should move the offset when text is added", function() {
+		sqrl.appendBuffer("welcome");
+		while(sqrl.canNibble()) sqrl.nibble();
+		
+		expect(sqrl.currentNode).toEqual(sqrl.document.firstChild);
+		expect(sqrl.offset).toEqual("welcome".length);
 	});
 	
 });

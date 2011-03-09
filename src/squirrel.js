@@ -552,8 +552,7 @@ SquirrelNode.prototype = {
 function Squirrel(rootName) {
 	this.rootName = rootName;
 	this.currentNode = null; // maintain the current input location
-	this.innerOffset = 0; // maintain the offset within the current node
-	this.offset = 0; // overall offset within the document
+	this.offset = 0; // overall offset within the current node
 
 	this.nodeTemplates = {};
 	this.document = null;
@@ -700,6 +699,7 @@ Squirrel.prototype = {
 			}
 		}
 		this.currentNode.appendChild(this.document.createTextNode(str));
+		this.offset += str.length;
 	},
 	
 	ascend: function ascend(/* Number */){
