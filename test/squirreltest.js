@@ -394,4 +394,44 @@ describe("squirrel", function(){
 		expect(sqrl.offset).toEqual("welcome".length);
 	});
 	
+	it("should set the offset to the end of a newly created node",function(){
+		sqrl.under("doc").accept(/wor/).asChild("world");
+		sqrl.appendBuffer("hello");
+		while(sqrl.canNibble()) sqrl.nibble();
+		
+		expect(sqrl.currentNode).toEqual(sqrl.document.firstChild);
+		expect(sqrl.offset).toEqual("hello".length);
+		
+		sqrl.appendBuffer("worldy");
+		while(sqrl.canNibble()) sqrl.nibble();
+		
+		expect(sqrl.currentNode).toEqual(sqrl.document.firstChild.childNodes[1]);
+		expect(sqrl.offset).toEqual("worldy".length);
+	});
+	
+	it("should place the offset to the length of total text in parent", function(){
+		sqrl.under("doc").accept(/my/).asChild("my");
+		sqrl.under("my").accept(/ty/).toAscend(true);
+		
+		sqrl.appendBuffer("hello my very pre world");
+		while(sqrl.canNibble()) sqrl.nibble();
+		
+		expect(sqrl.currentNode).toEqual(sqrl.document.firstChild.childNodes[1]);
+		expect(sqrl.offset).toEqual("my very pre world".length);
+		console.log(sqrl);
+		console.log(sqrl.document);
+		
+	});
+	
+	it("should be able to set the current edit location", function(){
+		sqrl.under("doc").accept(/my/).asChild("my");
+		sqrl.under("my").accept(/\s/).toAscend();
+		
+		sqrl.appendBuffer("hello my world");
+		while(sqrl.canNibble()) sqrl.nibble();
+		
+		expect(sqrl.currentNode).toEqual(sqrl.document.firstChild);
+		
+	});
+	
 });

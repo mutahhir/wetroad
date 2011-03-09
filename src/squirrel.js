@@ -614,6 +614,7 @@ Squirrel.prototype = {
 	setState: function setState(node /* , replaceState */){
 		this.currentNode = node;
 		this.currentTemplate = this.nodeTemplates[node.nodeName];
+		this.offset = Utils.totalTextLength();
 	},
 	
 	moveToChild: function moveToChild(node) {
@@ -695,6 +696,7 @@ Squirrel.prototype = {
 			var lst = this.currentNode.lastChild;
 			if (lst.nodeType === this.document.TEXT_NODE) {
 				lst.data += str;
+				this.offset = lst.data.length;
 				return;
 			}
 		}

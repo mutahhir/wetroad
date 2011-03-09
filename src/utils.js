@@ -58,4 +58,8 @@ Utils.removeWrappingNode = function removeWrappingNode( parent, node ){
 Utils.escapeRegexp = function escapeRegexp( str ) {
 	var specials = new RegExp("[.*+?|()\\[\\]{}\\\\]", "g"); // .*+?|()[]{}\
 	return str.replace(specials, "\\$&");
-}
+};
+
+Utils.totalTextLength = function totalTextLength( node ) {
+	if( !Utils.isNode(node) ) throw new TypeError("expected node");
+};
